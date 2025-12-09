@@ -111,7 +111,7 @@ const MessageNode = ({ data, isConnectable, selected }: NodeProps) => {
         {isUser ? "You" : "Assistant"}
       </div>
 
-      <div className="p-4 text-sm text-gray-800 leading-relaxed max-h-[600px] overflow-y-auto">
+      <div className="p-4 text-sm text-gray-800 leading-relaxed overflow-y-auto">
         {/* We use a specific class to style the markdown content (prose-like) */}
         <div className="markdown-body break-words">
             <ReactMarkdown
