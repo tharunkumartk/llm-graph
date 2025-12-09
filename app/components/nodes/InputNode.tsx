@@ -1,0 +1,122 @@
+import React, { memo, useState, useCallback, useEffect } from "react";
+import { Handle, Position, NodeProps } from "@xyflow/react";
+import { ChatNodeData } from "@/types/chat";
+import { cn } from "@/app/lib/utils";
+import { Send, X } from "lucide-react";
+
+type ResponseMode = "concise" | "regular" | "explanatory";
+
+const MODE_PREFIXES = {
+  concise: "Be concise and brief in your response. ",
+  regular: "",
+  explanatory: "Please provide a detailed and explanatory response. ",
+};
+
+const MODE_LABELS = {
+  concise: "Concise",
+  regular: "Regular",
+  explanatory: "Explanatory",
+};
+
+const InputNode = ({ data, id }: NodeProps) => {
+  const [text, setText] = useState("");
+  const [mode, setMode] = useState<ResponseMode>("regular");
+
+  const cycleMode = (direction: "next" | "prev") => {
+    const modes: ResponseMode[] = ["concise", "regular", "explanatory"];
+    const currentIndex = modes.indexOf(mode);
+
+    if (direction === "next") {
+      const nextIndex = (currentIndex + 1) % modes.length;
+      setMode(modes[nextIndex]);
+    } else {
+      const prevIndex =
+        currentIndex === 0 ? modes.length - 1 : currentIndex - 1;
+      setMode(modes[prevIndex]);
+    }
+  };
+
+  const handleSend = () => {
+    const nodeData = data as ChatNodeData;
+    if (text.trim() && nodeData.onSend) {
+      const modifiedText = MODE_PREFIXES[mode] + text;
+      nodeData.onSend(modifiedText);
+      setText("");
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Check for Cmd+] (next mode) or Cmd+[ (prev mode)
+    if ((e.metaKey || e.ctrlKey) && e.key === "]") {
+      e.preventDefault();
+      cycleMode("next");
+      return;
+    }
+
+    if ((e.metaKey || e.ctrlKey) && e.key === "[") {
+      e.preventDefault();
+      cycleMode("prev");
+      return;
+    }
+
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className="shadow-lg rounded-xl border border-blue-300 bg-white min-w-[300px] max-w-[400px]">
+      <Handle
+        type="target"
+        position={Position.Top}
+        isConnectable={false}
+        className="w-16 h-16 bg-blue-500 border-2 border-white shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
+      />
+
+      <div className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            New Prompt
+          </label>
+          <div className="flex items-center gap-1">
+            <span
+              className={cn(
+                "px-2 py-0.5 text-[10px] font-medium rounded-full uppercase tracking-wide transition-colors",
+                mode === "concise" && "bg-green-100 text-green-700",
+                mode === "regular" && "bg-blue-100 text-blue-700",
+                mode === "explanatory" && "bg-purple-100 text-purple-700"
+              )}
+              title="Use Cmd+[ or Cmd+] to change mode"
+            >
+              {MODE_LABELS[mode]}
+            </span>
+          </div>
+        </div>
+        <textarea
+          className="w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
+          placeholder="Type your message here..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+        <div className="flex justify-between items-center gap-2 mt-2">
+          <span className="text-[10px] text-gray-400">
+            Cmd+[ / Cmd+] to cycle mode
+          </span>
+          <button
+            onClick={handleSend}
+            disabled={!text.trim()}
+            className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send size={14} />
+            Ask
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default memo(InputNode);
