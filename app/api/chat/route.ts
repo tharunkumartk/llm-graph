@@ -33,10 +33,12 @@ export async function POST(req: Request) {
     const reply = completion.choices[0].message.content;
 
     return NextResponse.json({ reply });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error calling OpenAI:", error);
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      {
+        error: error instanceof Error ? error.message : "Internal Server Error",
+      },
       { status: 500 }
     );
   }
