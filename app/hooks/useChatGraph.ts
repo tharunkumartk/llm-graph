@@ -30,7 +30,8 @@ const getInitialNodes = (): ChatNode[] => [
 ];
 
 export const useChatGraph = () => {
-  const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
+  const { screenToFlowPosition, getViewport, setViewport, setCenter, getNode } =
+    useReactFlow();
 
   // Track where the connection started
   const connectingNodeId = useRef<string | null>(null);
@@ -97,10 +98,21 @@ export const useChatGraph = () => {
 
       // 2. Create a placeholder Assistant Node
       const assistantId = `ai-${Date.now()}`;
+
+      // Calculate position based on input node
+      // Use getNode to get the most current position, avoiding stale state in closures
+      const inputNode = getNode(inputNodeId);
+      const position = inputNode
+        ? {
+            x: inputNode.position.x,
+            y: inputNode.position.y + 150 + (inputNode.measured?.height || 50),
+          }
+        : { x: 0, y: 0 };
+
       const assistantNode: ChatNode = {
         id: assistantId,
         type: "message",
-        position: { x: 0, y: 0 },
+        position,
         origin: [0.5, 0.0],
         data: {
           role: "assistant",
@@ -109,16 +121,7 @@ export const useChatGraph = () => {
         },
       };
 
-      setNodes((prevNodes) => {
-        const inputNode = prevNodes.find((n) => n.id === inputNodeId);
-        if (inputNode) {
-          assistantNode.position = {
-            x: inputNode.position.x,
-            y: inputNode.position.y + 200,
-          };
-        }
-        return [...prevNodes, assistantNode];
-      });
+      setNodes((prevNodes) => [...prevNodes, assistantNode]);
 
       setEdges((prevEdges) =>
         addEdge(
@@ -132,6 +135,12 @@ export const useChatGraph = () => {
           prevEdges
         )
       );
+
+      // Auto-zoom to the new assistant node
+      setCenter(position.x, position.y, {
+        zoom: getViewport().zoom,
+        duration: 800,
+      });
 
       // 3. Prepare Context and Call API
       const parentContext = getContextForNode(parentId, nodes, edges);
@@ -179,7 +188,16 @@ export const useChatGraph = () => {
         );
       }
     },
-    [nodes, edges, getContextForNode, setNodes, setEdges]
+    [
+      nodes,
+      edges,
+      getContextForNode,
+      setNodes,
+      setEdges,
+      setCenter,
+      getViewport,
+      getNode,
+    ]
   );
 
   // Standard onConnect for connecting existing nodes (less relevant here but good to keep)
@@ -233,6 +251,30 @@ export const useChatGraph = () => {
             timestamp: Date.now(),
             isInput: true,
             onSend: (text) => handleSend(text, parentId, inputId),
+            onCancel: () => {
+              // Delete the node
+              setNodes((nds) => nds.filter((n) => n.id !== inputId));
+              // Delete the edge
+              setEdges((eds) => eds.filter((e) => e.target !== inputId));
+
+              // Zoom back to the parent node
+              const parentNode = nodes.find((n) => n.id === parentId);
+              if (parentNode) {
+                // Adjust for node width/height to center it properly
+                // Assuming standard node size, or we could use measured dimensions if available
+                const width = parentNode.measured?.width || 300;
+                const height = parentNode.measured?.height || 100;
+
+                setCenter(
+                  parentNode.position.x + width / 2,
+                  parentNode.position.y + height / 2,
+                  {
+                    zoom: getViewport().zoom,
+                    duration: 800,
+                  }
+                );
+              }
+            },
           },
           origin: [0.5, 0.0],
         };
@@ -258,12 +300,26 @@ export const useChatGraph = () => {
             eds
           )
         );
+
+        // Move view to the new node
+        setCenter(adjustedPosition.x, adjustedPosition.y, {
+          zoom: getViewport().zoom,
+          duration: 800,
+        });
       }
 
       connectingNodeId.current = null;
       connectingHandleId.current = null;
     },
-    [screenToFlowPosition, handleSend, setNodes, setEdges]
+    [
+      screenToFlowPosition,
+      handleSend,
+      setNodes,
+      setEdges,
+      setCenter,
+      getViewport,
+      nodes,
+    ]
   );
 
   // Helper: Get optimal handles based on relative node positions
@@ -451,6 +507,26 @@ export const useChatGraph = () => {
               ...(node.data.isInput && {
                 onSend: (text: string) =>
                   handleSend(text, node.id.replace("input-", ""), node.id),
+                onCancel: () => {
+                  const inputId = node.id;
+                  // We need to find the parent from edges.
+                  // This is tricky because edges state isn't directly accessible here in the callback without closure.
+                  // However, we can use functional state update to find the edge.
+
+                  setEdges((currentEdges) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const _edge = currentEdges.find(
+                      (e) => e.target === inputId
+                    );
+                    return currentEdges.filter((e) => e.target !== inputId);
+                  });
+
+                  setNodes((currentNodes) => {
+                    return currentNodes.filter((n) => n.id !== inputId);
+                  });
+
+                  // Note: Zooming back on restored nodes is skipped for simplicity.
+                },
               }),
             },
             ...(node.origin && { origin: node.origin }),

@@ -63,6 +63,13 @@ const InputNode = ({ data, id }: NodeProps) => {
       e.preventDefault();
       handleSend();
     }
+
+    if (e.key === "Escape") {
+      const nodeData = data as ChatNodeData;
+      if (text.trim() === "" && nodeData.onCancel) {
+        nodeData.onCancel();
+      }
+    }
   };
 
   return (
@@ -81,6 +88,7 @@ const InputNode = ({ data, id }: NodeProps) => {
         id="left"
         isConnectable={false}
         className="w-12 h-12 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
+        style={{ top: '50%' }}
       />
       
       <Handle
@@ -89,6 +97,7 @@ const InputNode = ({ data, id }: NodeProps) => {
         id="right"
         isConnectable={false}
         className="w-12 h-12 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
+        style={{ top: '50%' }}
       />
 
       <div className="p-3">

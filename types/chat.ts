@@ -15,6 +15,7 @@ export interface ChatNodeData extends Record<string, unknown> {
   timestamp: number;
   isInput?: boolean; // If true, this is a temporary input node
   onSend?: (content: string) => void;
+  onCancel?: () => void;
 }
 
 // We extend the base Node type from React Flow

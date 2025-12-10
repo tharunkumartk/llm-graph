@@ -4,6 +4,7 @@ import {
   Background, 
   Controls, 
   MiniMap,
+  useReactFlow,
   ReactFlowProvider,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -19,6 +20,7 @@ const nodeTypes = {
 };
 
 function ChatGraphContent() {
+  const { fitView, getNodes, getEdges } = useReactFlow();
   const { 
     nodes, 
     edges, 
@@ -36,6 +38,130 @@ function ChatGraphContent() {
   } = useChatGraph();
 
   const [isDarkMode, setIsDarkMode] = React.useState(false);
+  
+  // Navigation state
+  const focusedNodeIdRef = useRef<string | null>(null);
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle navigation if not typing in an input field (unless it's the graph itself)
+      // Since InputNode has an input field, we might want to be careful.
+      // But typically "Tab" and Arrow keys in a canvas context should be handled if the canvas is focused or globally if not inside a textarea/input.
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // Allow Tab to escape input? Or Arrows to move cursor?
+        // If it's the InputNode's input, we probably want normal behavior.
+        // But if user wants to navigate OUT of the input to the graph?
+        // For now, let's ignore if inside input/textarea to avoid conflict.
+        if (event.key !== 'Tab') return; 
+      }
+
+      if (['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        const currentNodes = getNodes();
+        const currentEdges = getEdges();
+        
+        if (currentNodes.length === 0) return;
+
+        // If no node is focused, default to the first one (or root)
+        let currentNodeId = focusedNodeIdRef.current;
+        if (!currentNodeId || !currentNodes.find(n => n.id === currentNodeId)) {
+          // Try to find root or just take the first one
+          // Assuming root is first or has specific ID 'root'
+          const root = currentNodes.find(n => n.id === 'root') || currentNodes[0];
+          currentNodeId = root.id;
+          // If we are just starting, we might not want to preventDefault yet if we are not "active"
+          // But let's assume we want to start navigation.
+        }
+
+        let nextNodeId: string | null = null;
+
+        if (event.key === 'Tab') {
+            event.preventDefault();
+            // Linear navigation by timestamp
+            const sortedNodes = [...currentNodes].sort((a, b) => {
+                return (a.data.timestamp as number) - (b.data.timestamp as number);
+            });
+            const currentIndex = sortedNodes.findIndex(n => n.id === currentNodeId);
+            const nextIndex = (currentIndex + 1) % sortedNodes.length;
+            nextNodeId = sortedNodes[nextIndex].id;
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            // Find children (outgoing edges)
+            const outgoingEdges = currentEdges.filter(e => e.source === currentNodeId);
+            if (outgoingEdges.length > 0) {
+                // If multiple children, pick the one with most recent timestamp or just first
+                // Let's pick the first one for now, or the one that is "closest" to x=0 relative to parent?
+                // Chat usually branches. Let's just pick the first one found.
+                // Or maybe the one most recently added?
+                // Finding the child node to check timestamp
+                const children = outgoingEdges.map(e => currentNodes.find(n => n.id === e.target)).filter(Boolean);
+                // Sort by timestamp descending (newest first)
+                children.sort((a, b) => ((b?.data.timestamp as number) || 0) - ((a?.data.timestamp as number) || 0));
+                if (children.length > 0 && children[0]) {
+                     nextNodeId = children[0].id;
+                }
+            }
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+             // Find parent (incoming edge)
+             const incomingEdge = currentEdges.find(e => e.target === currentNodeId);
+             if (incomingEdge) {
+                 nextNodeId = incomingEdge.source;
+             }
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            // Siblings
+            const incomingEdge = currentEdges.find(e => e.target === currentNodeId);
+            if (incomingEdge) {
+                const parentId = incomingEdge.source;
+                // Find all children of parent
+                const siblingEdges = currentEdges.filter(e => e.source === parentId);
+                const siblings = siblingEdges.map(e => currentNodes.find(n => n.id === e.target)).filter(Boolean);
+                
+                // Sort siblings by timestamp (creation order)
+                siblings.sort((a, b) => ((a?.data.timestamp as number) || 0) - ((b?.data.timestamp as number) || 0));
+                
+                const currentIndex = siblings.findIndex(n => n?.id === currentNodeId);
+                if (currentIndex !== -1) {
+                    if (event.key === 'ArrowLeft') {
+                        // Previous sibling
+                        const nextIndex = currentIndex - 1;
+                        if (nextIndex >= 0 && siblings[nextIndex]) {
+                            nextNodeId = siblings[nextIndex]!.id;
+                        }
+                    } else {
+                        // Next sibling
+                        const nextIndex = currentIndex + 1;
+                        if (nextIndex < siblings.length && siblings[nextIndex]) {
+                            nextNodeId = siblings[nextIndex]!.id;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (nextNodeId) {
+            fitView({
+                nodes: [{ id: nextNodeId }],
+                padding: 0.2,
+                duration: 500,
+            });
+            focusedNodeIdRef.current = nextNodeId;
+        } else if (!focusedNodeIdRef.current) {
+            // If we didn't move but we just initialized focus (e.g. first Tab press)
+             fitView({
+                nodes: [{ id: currentNodeId }],
+                padding: 0.2,
+                duration: 500,
+            });
+            focusedNodeIdRef.current = currentNodeId;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fitView, getNodes, getEdges]);
 
   React.useEffect(() => {
     // Check initial preference
@@ -157,7 +283,7 @@ function ChatGraphContent() {
         nodesConnectable={true}
         defaultEdgeOptions={{
             type: 'smoothstep',
-            animated: true,
+            animated: false,
             style: { stroke: isDarkMode ? '#52525b' : '#e5e7eb', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
