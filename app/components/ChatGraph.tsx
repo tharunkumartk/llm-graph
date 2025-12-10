@@ -27,12 +27,27 @@ function ChatGraphContent() {
     onConnect, 
     onConnectStart, 
     onConnectEnd,
+    onNodeDrag,
     startNewConversation,
     exportState,
     importState,
     copyStateToClipboard,
     saveToLocalStorage // Add this
   } = useChatGraph();
+
+  const [isDarkMode, setIsDarkMode] = React.useState(false);
+
+  React.useEffect(() => {
+    // Check initial preference
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setIsDarkMode(mediaQuery.matches);
+
+      const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,14 +89,14 @@ function ChatGraphContent() {
   };
 
   return (
-    <div className="w-full h-screen bg-gray-50 relative group/canvas">
+    <div className="w-full h-screen bg-gray-50 dark:bg-black relative group/canvas">
       {/* Top Control Bar */}
-      <div className="absolute top-6 right-6 z-10 flex items-center gap-2 p-1.5 bg-white/80 backdrop-blur-sm border border-gray-200/60 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="absolute top-6 right-6 z-10 flex items-center gap-2 p-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-gray-200/60 dark:border-zinc-800/60 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
         
-        <div className="flex items-center gap-1 pr-2 border-r border-gray-200">
+        <div className="flex items-center gap-1 pr-2 border-r border-gray-200 dark:border-zinc-800">
             <button
             onClick={handleExport}
-            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 rounded-xl transition-all duration-200 group relative"
+            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 rounded-xl transition-all duration-200 group relative"
             title="Export JSON"
             >
             <Download size={18} strokeWidth={2} />
@@ -89,7 +104,7 @@ function ChatGraphContent() {
             </button>
             <button
             onClick={handleImport}
-            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 rounded-xl transition-all duration-200 group relative"
+            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 rounded-xl transition-all duration-200 group relative"
             title="Import JSON"
             >
             <Upload size={18} strokeWidth={2} />
@@ -97,7 +112,7 @@ function ChatGraphContent() {
             </button>
             <button
             onClick={handleCopyToClipboard}
-            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100/50 rounded-xl transition-all duration-200 group relative"
+            className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 rounded-xl transition-all duration-200 group relative"
             title="Copy to Clipboard"
             >
             <Copy size={18} strokeWidth={2} />
@@ -107,9 +122,9 @@ function ChatGraphContent() {
 
         <button
           onClick={handleStartNew}
-          className="flex items-center gap-2 pl-2 pr-4 py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50/50 rounded-xl transition-all duration-200 group"
+          className="flex items-center gap-2 pl-2 pr-4 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 group"
         >
-          <div className="p-1 rounded-lg bg-gray-100 group-hover:bg-red-100 group-hover:text-red-600 transition-colors">
+          <div className="p-1 rounded-lg bg-gray-100 dark:bg-zinc-800 group-hover:bg-red-100 dark:group-hover:bg-red-900/40 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
             <Plus size={14} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" />
           </div>
           <span>New Chat</span>
@@ -133,6 +148,7 @@ function ChatGraphContent() {
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
+        onNodeDrag={onNodeDrag}
         onMoveEnd={saveToLocalStorage} // Add this
         nodeTypes={nodeTypes}
         fitView
@@ -142,21 +158,21 @@ function ChatGraphContent() {
         defaultEdgeOptions={{
             type: 'smoothstep',
             animated: true,
-            style: { stroke: '#e5e7eb', strokeWidth: 2 },
+            style: { stroke: isDarkMode ? '#52525b' : '#e5e7eb', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={24} size={1} color="#E5E7EB" />
-        <Controls className="bg-white/80 backdrop-blur-sm border-gray-200 shadow-sm rounded-xl overflow-hidden !left-6 !bottom-6 !m-0" />
+        <Background gap={24} size={1} color={isDarkMode ? '#27272a' : '#E5E7EB'} />
+        <Controls className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-gray-200 dark:border-zinc-800 shadow-sm rounded-xl overflow-hidden !left-6 !bottom-6 !m-0 [&>button]:border-b-gray-200 dark:[&>button]:border-b-zinc-800 [&>button]:text-gray-600 dark:[&>button]:text-gray-400 [&>button:hover]:bg-gray-50 dark:[&>button:hover]:bg-zinc-800" />
         <MiniMap 
             zoomable 
             pannable 
-            className="!bg-white/80 !backdrop-blur-sm !border-gray-200 !shadow-sm !rounded-xl !overflow-hidden !right-6 !bottom-6 !m-0"
-            maskColor="rgba(249, 250, 251, 0.6)"
+            className="!bg-white/80 dark:!bg-zinc-900/80 !backdrop-blur-sm !border-gray-200 dark:!border-zinc-800 !shadow-sm !rounded-xl !overflow-hidden !right-6 !bottom-6 !m-0"
+            maskColor={isDarkMode ? "rgba(9, 9, 11, 0.6)" : "rgba(249, 250, 251, 0.6)"}
             nodeColor={(n) => {
                 if (n.type === 'inputNode') return '#3b82f6';
-                if (n.data?.role === 'user') return '#93c5fd';
-                return '#e5e7eb';
+                if (n.data?.role === 'user') return isDarkMode ? '#1e40af' : '#93c5fd';
+                return isDarkMode ? '#3f3f46' : '#e5e7eb';
             }}
         />
       </ReactFlow>

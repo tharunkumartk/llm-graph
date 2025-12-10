@@ -66,26 +66,43 @@ const InputNode = ({ data, id }: NodeProps) => {
   };
 
   return (
-    <div className="shadow-lg rounded-xl border border-blue-300 bg-white min-w-[300px] max-w-[400px]">
+    <div className="shadow-lg rounded-xl border border-blue-300 bg-white dark:bg-zinc-900 dark:border-blue-700 min-w-[300px] max-w-[400px]">
       <Handle
         type="target"
         position={Position.Top}
+        id="top"
         isConnectable={false}
-        className="w-16 h-16 bg-blue-500 border-2 border-white shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
+        className="w-16 h-16 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left"
+        isConnectable={false}
+        className="w-12 h-12 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
+      />
+      
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right"
+        isConnectable={false}
+        className="w-12 h-12 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
       />
 
       <div className="p-3">
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             New Prompt
           </label>
           <div className="flex items-center gap-1">
             <span
               className={cn(
                 "px-2 py-0.5 text-[10px] font-medium rounded-full uppercase tracking-wide transition-colors",
-                mode === "concise" && "bg-green-100 text-green-700",
-                mode === "regular" && "bg-blue-100 text-blue-700",
-                mode === "explanatory" && "bg-purple-100 text-purple-700"
+                mode === "concise" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                mode === "regular" && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                mode === "explanatory" && "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
               )}
               title="Use Cmd+[ or Cmd+] to change mode"
             >
@@ -94,7 +111,7 @@ const InputNode = ({ data, id }: NodeProps) => {
           </div>
         </div>
         <textarea
-          className="w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
+          className="w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400"
           placeholder="Type your message here..."
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -102,7 +119,7 @@ const InputNode = ({ data, id }: NodeProps) => {
           autoFocus
         />
         <div className="flex justify-between items-center gap-2 mt-2">
-          <span className="text-[10px] text-gray-400">
+          <span className="text-[10px] text-gray-400 dark:text-gray-500">
             Cmd+[ / Cmd+] to cycle mode
           </span>
           <button

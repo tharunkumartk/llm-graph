@@ -34,6 +34,7 @@ export const useChatGraph = () => {
 
   // Track where the connection started
   const connectingNodeId = useRef<string | null>(null);
+  const connectingHandleId = useRef<string | null>(null);
   const isInitialized = useRef(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<ChatNode>(
@@ -189,9 +190,13 @@ export const useChatGraph = () => {
     [setEdges]
   );
 
-  const onConnectStart: OnConnectStart = useCallback((_, { nodeId }) => {
-    connectingNodeId.current = nodeId;
-  }, []);
+  const onConnectStart: OnConnectStart = useCallback(
+    (_, { nodeId, handleId }) => {
+      connectingNodeId.current = nodeId;
+      connectingHandleId.current = handleId || null;
+    },
+    []
+  );
 
   const onConnectEnd: OnConnectEnd = useCallback(
     (event) => {
@@ -212,12 +217,16 @@ export const useChatGraph = () => {
         const position = screenToFlowPosition({ x: clientX, y: clientY });
 
         const parentId = connectingNodeId.current;
+        const handleId = connectingHandleId.current || "bottom";
         const inputId = `input-${Date.now()}`;
+
+        // Use the exact drop position as requested
+        const adjustedPosition = position;
 
         const newNode: ChatNode = {
           id: inputId,
           type: "inputNode",
-          position, // Use the drop position
+          position: adjustedPosition,
           data: {
             role: "user",
             content: "",
@@ -234,7 +243,15 @@ export const useChatGraph = () => {
             {
               id: `e-${parentId}-${inputId}`,
               source: parentId,
+              sourceHandle: handleId,
               target: inputId,
+              // Initial target handle based on the source handle used
+              targetHandle:
+                handleId === "left"
+                  ? "right"
+                  : handleId === "right"
+                  ? "left"
+                  : "top",
               type: "smoothstep",
               markerEnd: { type: MarkerType.ArrowClosed },
             },
@@ -244,8 +261,103 @@ export const useChatGraph = () => {
       }
 
       connectingNodeId.current = null;
+      connectingHandleId.current = null;
     },
     [screenToFlowPosition, handleSend, setNodes, setEdges]
+  );
+
+  // Helper: Get optimal handles based on relative node positions
+  const getOptimalHandles = (sourceNode: Node, targetNode: Node) => {
+    const sourceCenter = {
+      x: sourceNode.position.x + (sourceNode.measured?.width || 300) / 2,
+      y: sourceNode.position.y + (sourceNode.measured?.height || 100) / 2,
+    };
+    const targetCenter = {
+      x: targetNode.position.x + (targetNode.measured?.width || 300) / 2,
+      y: targetNode.position.y + (targetNode.measured?.height || 100) / 2,
+    };
+
+    const dx = targetCenter.x - sourceCenter.x;
+    const dy = targetCenter.y - sourceCenter.y;
+
+    // Determine primary direction
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal relationship
+      if (dx > 0) {
+        // Target is to the right
+        return { source: "right", target: "left" }; // Using base IDs
+      } else {
+        // Target is to the left
+        return { source: "left", target: "right" };
+      }
+    } else {
+      // Vertical relationship
+      if (dy > 0) {
+        // Target is below
+        return { source: "bottom", target: "top" };
+      } else {
+        // Target is above - standard flow usually down, but for flexible layout:
+        return { source: "bottom", target: "top" };
+      }
+    }
+  };
+
+  const onNodeDrag = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      setEdges((prevEdges) => {
+        return prevEdges.map((edge) => {
+          // Check if this edge is connected to the dragged node
+          if (edge.source === node.id || edge.target === node.id) {
+            const sourceNode =
+              edge.source === node.id
+                ? node
+                : nodes.find((n) => n.id === edge.source);
+            const targetNode =
+              edge.target === node.id
+                ? node
+                : nodes.find((n) => n.id === edge.target);
+
+            if (sourceNode && targetNode) {
+              const { source, target } = getOptimalHandles(
+                sourceNode,
+                targetNode
+              );
+
+              // Determine precise handle IDs based on node type
+              let finalTargetHandle = target;
+
+              // InputNode uses "left", "right"
+              // MessageNode uses "left-target", "right-target" for inputs
+              if (
+                targetNode.type === "message" &&
+                (target === "left" || target === "right")
+              ) {
+                finalTargetHandle = `${target}-target`;
+              } else if (targetNode.type === "inputNode") {
+                // InputNode has IDs "left", "right"
+                finalTargetHandle = target;
+              } else if (target === "top") {
+                finalTargetHandle = "top";
+              }
+
+              // Only update if handles changed
+              if (
+                edge.sourceHandle !== source ||
+                edge.targetHandle !== finalTargetHandle
+              ) {
+                return {
+                  ...edge,
+                  sourceHandle: source,
+                  targetHandle: finalTargetHandle,
+                };
+              }
+            }
+          }
+          return edge;
+        });
+      });
+    },
+    [nodes, setEdges]
   );
 
   // Serialize the conversation state to JSON
@@ -457,6 +569,7 @@ export const useChatGraph = () => {
     onConnect,
     onConnectStart,
     onConnectEnd,
+    onNodeDrag,
     serializeState,
     exportState,
     importState,
