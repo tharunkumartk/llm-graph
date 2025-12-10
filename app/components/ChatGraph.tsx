@@ -21,7 +21,7 @@ const nodeTypes = {
 };
 
 function ChatGraphContent() {
-  const { fitView, getNodes, getEdges } = useReactFlow();
+  const { getNodes, getEdges, setCenter } = useReactFlow();
   const {
     nodes,
     edges,
@@ -35,7 +35,8 @@ function ChatGraphContent() {
     exportState,
     importState,
     copyStateToClipboard,
-    saveToLocalStorage, // Add this
+    saveToLocalStorage,
+    addInputNode,
   } = useChatGraph();
 
   const [isDarkMode, setIsDarkMode] = React.useState(false);
@@ -43,6 +44,56 @@ function ChatGraphContent() {
 
   // Navigation state
   const focusedNodeIdRef = useRef<string | null>(null);
+
+  // Helper to focus on a node with smart zoom (top-aligned, width-fitting)
+  const focusNode = React.useCallback(
+    (nodeId: string) => {
+      const node = getNodes().find((n) => n.id === nodeId);
+      if (!node) return;
+
+      const vh = window.innerHeight || 800;
+      const vw = window.innerWidth || 1200;
+
+      const nodeWidth = node.measured?.width || 500;
+
+      // Target zoom: 1.0 (readable) or fit width if node is too wide
+      let targetZoom = 1.0;
+      const paddingX = 40;
+      if (nodeWidth * targetZoom > vw - paddingX) {
+        targetZoom = (vw - paddingX) / nodeWidth;
+      }
+
+      // Calculate center coordinates
+      // We want to center horizontally on the node
+      // And vertically align the top of the node near the top of the screen
+
+      // Determine node top and center-x based on origin
+      // Default origin is [0,0] (top-left). useChatGraph sets [0.5, 0] (top-center) for some.
+      const isOriginCenteredX = node.origin?.[0] === 0.5;
+      const isOriginTopY = !node.origin || node.origin[1] === 0;
+
+      const nodeCenterX = isOriginCenteredX
+        ? node.position.x
+        : node.position.x + nodeWidth / 2;
+
+      const nodeTopY = isOriginTopY
+        ? node.position.y
+        : node.position.y - (node.measured?.height || 0) / 2; // Assuming 0.5 originY if not 0
+
+      const paddingTop = 100; // Distance from top of screen
+
+      // Calculate viewport center that places nodeTopY at paddingTop
+      // CenterY = TopY + (ScreenHeight/2 - PaddingTop) / Zoom
+      const targetCenterY = nodeTopY + (vh / 2 - paddingTop) / targetZoom;
+
+      setCenter(nodeCenterX, targetCenterY, {
+        zoom: targetZoom,
+        duration: 800,
+      });
+      focusedNodeIdRef.current = nodeId;
+    },
+    [getNodes, setCenter]
+  );
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -55,6 +106,74 @@ function ChatGraphContent() {
         // If it's the InputNode's input, we probably want normal behavior.
         // But if user wants to navigate OUT of the input to the graph?
         // For now, let's ignore if inside input/textarea to avoid conflict.
+        return;
+      }
+
+      // Cmd + = to add new node to most recent assistant response
+      if ((event.metaKey || event.ctrlKey) && event.key === "=") {
+        event.preventDefault();
+        const currentNodes = getNodes();
+
+        // Find most recent assistant node
+        const assistantNodes = currentNodes.filter(
+          (n) => n.data.role === "assistant"
+        );
+
+        if (assistantNodes.length > 0) {
+          // Sort by timestamp descending
+          assistantNodes.sort(
+            (a, b) =>
+              ((b.data.timestamp as number) || 0) -
+              ((a.data.timestamp as number) || 0)
+          );
+
+          const mostRecentAssistant = assistantNodes[0];
+          addInputNode(mostRecentAssistant.id);
+        }
+        return;
+      }
+
+      // Cmd + Up: Go to absolute first node (root)
+      if ((event.metaKey || event.ctrlKey) && event.key === "ArrowUp") {
+        event.preventDefault();
+        const currentNodes = getNodes();
+        if (currentNodes.length > 0) {
+          // Try to find root first
+          let targetNode = currentNodes.find((n) => n.id === "root");
+
+          // If no root, find the earliest node by timestamp
+          if (!targetNode) {
+            const sortedNodes = [...currentNodes].sort(
+              (a, b) =>
+                ((a.data.timestamp as number) || 0) -
+                ((b.data.timestamp as number) || 0)
+            );
+            targetNode = sortedNodes[0];
+          }
+
+          if (targetNode) {
+            focusNode(targetNode.id);
+          }
+        }
+        return;
+      }
+
+      // Cmd + Down: Go to absolute last node (most recent)
+      if ((event.metaKey || event.ctrlKey) && event.key === "ArrowDown") {
+        event.preventDefault();
+        const currentNodes = getNodes();
+        if (currentNodes.length > 0) {
+          // Find most recent node by timestamp
+          const sortedNodes = [...currentNodes].sort(
+            (a, b) =>
+              ((b.data.timestamp as number) || 0) -
+              ((a.data.timestamp as number) || 0)
+          );
+
+          if (sortedNodes.length > 0) {
+            focusNode(sortedNodes[0].id);
+          }
+        }
         return;
       }
 
@@ -175,27 +294,17 @@ function ChatGraphContent() {
         }
 
         if (nextNodeId) {
-          fitView({
-            nodes: [{ id: nextNodeId }],
-            padding: 0.2,
-            duration: 500,
-          });
-          focusedNodeIdRef.current = nextNodeId;
+          focusNode(nextNodeId);
         } else if (!focusedNodeIdRef.current) {
           // If we didn't move but we just initialized focus (e.g. first Tab press)
-          fitView({
-            nodes: [{ id: currentNodeId }],
-            padding: 0.2,
-            duration: 500,
-          });
-          focusedNodeIdRef.current = currentNodeId;
+          focusNode(currentNodeId);
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [fitView, getNodes, getEdges]);
+  }, [getNodes, getEdges, focusNode, addInputNode]);
 
   React.useEffect(() => {
     // Check initial preference
@@ -321,11 +430,19 @@ function ChatGraphContent() {
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
+        onNodeDragStart={(_, node) => {
+          focusedNodeIdRef.current = node.id;
+        }}
         onNodeDrag={onNodeDrag}
+        onNodeClick={(_, node) => {
+          focusedNodeIdRef.current = node.id;
+        }}
         onMoveEnd={saveToLocalStorage} // Add this
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.1}
+        panOnScroll={true}
+        zoomActivationKeyCode="Meta"
         nodesDraggable={true}
         nodesConnectable={true}
         defaultEdgeOptions={{

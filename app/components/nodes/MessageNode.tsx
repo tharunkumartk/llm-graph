@@ -1,5 +1,11 @@
 import React, { memo, useMemo } from "react";
-import { Handle, Position, NodeProps, NodeResizeControl } from "@xyflow/react";
+import {
+  Handle,
+  Position,
+  NodeProps,
+  NodeResizeControl,
+  useStore,
+} from "@xyflow/react";
 import { ChatNodeData } from "@/types/chat";
 import { cn } from "@/app/lib/utils";
 import { Bot, User } from "lucide-react";
@@ -36,6 +42,9 @@ const preprocessMarkdown = (content: string): string => {
 };
 
 const MessageNode = ({ data, isConnectable, selected }: NodeProps) => {
+  const isZoomedIn = useStore(
+    (s: { transform: [number, number, number] }) => s.transform[2] > 1.0
+  );
   const isUser = (data as ChatNodeData).role === "user";
 
   // Preprocess the content once
@@ -47,10 +56,10 @@ const MessageNode = ({ data, isConnectable, selected }: NodeProps) => {
   return (
     <div
       className={cn(
-        "shadow-md rounded-xl border bg-white dark:bg-zinc-900 min-w-[300px] text-left relative group transition-all duration-200",
+        "shadow-md rounded-xl border bg-white dark:bg-zinc-900 min-w-[300px] max-w-[900px] text-left relative group transition-all duration-200",
         isUser
           ? "border-blue-200 dark:border-blue-800"
-          : "border-gray-200 dark:border-zinc-700 max-w-[900px]",
+          : "border-gray-200 dark:border-zinc-700",
         // Add subtle outline/border highlight when selected or hovered (for assistant nodes)
         !isUser &&
           (selected ||
@@ -139,7 +148,14 @@ const MessageNode = ({ data, isConnectable, selected }: NodeProps) => {
         {isUser ? "You" : "Assistant"}
       </div>
 
-      <div className="p-4 text-sm text-gray-800 dark:text-gray-200 leading-relaxed overflow-y-auto">
+      <div
+        className={cn(
+          "p-4 text-sm text-gray-800 dark:text-gray-200 leading-relaxed overflow-y-auto",
+          isZoomedIn
+            ? "nodrag cursor-text select-text"
+            : "cursor-grab select-none"
+        )}
+      >
         {/* We use a specific class to style the markdown content (prose-like) */}
         <div className="markdown-body break-words">
           <ReactMarkdown
@@ -177,7 +193,12 @@ const MessageNode = ({ data, isConnectable, selected }: NodeProps) => {
                   {children}
                 </h3>
               ),
-              code: ({ node, className, children, ...props }: any) => {
+              code: ({
+                node: _node,
+                className,
+                children,
+                ...props
+              }: React.ComponentPropsWithoutRef<"code"> & { node?: any }) => {
                 const match = /language-(\w+)/.exec(className || "");
                 const isInline = !match && !String(children).includes("\n");
                 return isInline ? (

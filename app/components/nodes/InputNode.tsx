@@ -1,5 +1,5 @@
-import React, { memo, useState, useCallback, useEffect } from "react";
-import { Handle, Position, NodeProps } from "@xyflow/react";
+import React, { memo, useState, useCallback, useEffect, useRef } from "react";
+import { Handle, Position, NodeProps, useStore } from "@xyflow/react";
 import { ChatNodeData } from "@/types/chat";
 import { cn } from "@/app/lib/utils";
 import { Send, X } from "lucide-react";
@@ -19,8 +19,18 @@ const MODE_LABELS = {
 };
 
 const InputNode = ({ data, id }: NodeProps) => {
+  const isZoomedIn = useStore((s: { transform: [number, number, number] }) => s.transform[2] > 1.0);
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ResponseMode>("regular");
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    // Focus the textarea when the component mounts
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
 
   const cycleMode = (direction: "next" | "prev") => {
     const modes: ResponseMode[] = ["concise", "regular", "explanatory"];
@@ -73,7 +83,7 @@ const InputNode = ({ data, id }: NodeProps) => {
   };
 
   return (
-    <div className="shadow-lg rounded-xl border border-blue-300 bg-white dark:bg-zinc-900 dark:border-blue-700 min-w-[300px] max-w-[400px]">
+    <div className="shadow-lg rounded-xl border border-blue-300 bg-white dark:bg-zinc-900 dark:border-blue-700 min-w-[400px] max-w-[600px]">
       <Handle
         type="target"
         position={Position.Top}
@@ -120,7 +130,11 @@ const InputNode = ({ data, id }: NodeProps) => {
           </div>
         </div>
         <textarea
-          className="w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400"
+          ref={textareaRef}
+          className={cn(
+            "w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-none bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400",
+            !isZoomedIn && "pointer-events-none"
+          )}
           placeholder="Type your message here..."
           value={text}
           onChange={(e) => setText(e.target.value)}

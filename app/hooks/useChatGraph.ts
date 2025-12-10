@@ -143,8 +143,24 @@ export const useChatGraph = () => {
       );
 
       // Auto-zoom to the new assistant node
-      setCenter(zoomPosition.x, zoomPosition.y, {
-        zoom: getViewport().zoom,
+      // Smart zoom: Ensure readable zoom and align top
+      const vh = window.innerHeight || 800;
+      const vw = window.innerWidth || 1200;
+
+      let targetZoom = 1.0;
+      const paddingX = 40;
+      const estimatedWidth = 900; // Assistant node max width
+
+      if (estimatedWidth * targetZoom > vw - paddingX) {
+        targetZoom = (vw - paddingX) / estimatedWidth;
+      }
+
+      // Align top of node to top area of screen
+      const paddingTop = 100;
+      const targetCenterY = zoomPosition.y + (vh / 2 - paddingTop) / targetZoom;
+
+      setCenter(zoomPosition.x, targetCenterY, {
+        zoom: targetZoom,
         duration: 800,
       });
 
@@ -194,16 +210,78 @@ export const useChatGraph = () => {
         );
       }
     },
-    [
-      nodes,
-      edges,
-      getContextForNode,
-      setNodes,
-      setEdges,
-      setCenter,
-      getViewport,
-      getNode,
-    ]
+    [nodes, edges, getContextForNode, setNodes, setEdges, setCenter, getNode]
+  );
+
+  const addInputNode = useCallback(
+    (parentId: string) => {
+      const parentNode = getNode(parentId);
+      if (!parentNode) return;
+
+      const inputId = `input-${Date.now()}`;
+
+      // Calculate position: centered below parent
+      // Assuming origin is [0.5, 0] for both, keeping X same aligns them.
+      const verticalGap = 100;
+      const parentHeight = parentNode.measured?.height || 100;
+
+      const position = {
+        x: parentNode.position.x,
+        y: parentNode.position.y + parentHeight + verticalGap,
+      };
+
+      const newNode: ChatNode = {
+        id: inputId,
+        type: "inputNode",
+        position,
+        data: {
+          role: "user",
+          content: "",
+          timestamp: Date.now(),
+          isInput: true,
+          onSend: (text) => handleSend(text, parentId, inputId),
+          onCancel: () => {
+            setNodes((nds) => nds.filter((n) => n.id !== inputId));
+            setEdges((eds) => eds.filter((e) => e.target !== inputId));
+
+            // Focus back on parent
+            if (parentNode) {
+              const width = parentNode.measured?.width || 300;
+              const height = parentNode.measured?.height || 100;
+              setCenter(
+                parentNode.position.x + width / 2,
+                parentNode.position.y + height / 2,
+                { zoom: getViewport().zoom, duration: 800 }
+              );
+            }
+          },
+        },
+        origin: [0.5, 0.0],
+      };
+
+      setNodes((nds) => nds.concat(newNode));
+      setEdges((eds) =>
+        addEdge(
+          {
+            id: `e-${parentId}-${inputId}`,
+            source: parentId,
+            sourceHandle: "bottom",
+            target: inputId,
+            targetHandle: "top",
+            type: "smoothstep",
+            markerEnd: { type: MarkerType.ArrowClosed },
+          },
+          eds
+        )
+      );
+
+      // Zoom to new node
+      setCenter(position.x, position.y + 50, {
+        zoom: getViewport().zoom,
+        duration: 800,
+      });
+    },
+    [getNode, handleSend, setNodes, setEdges, setCenter, getViewport]
   );
 
   // Standard onConnect for connecting existing nodes (less relevant here but good to keep)
@@ -325,7 +403,7 @@ export const useChatGraph = () => {
       setEdges,
       setCenter,
       getViewport,
-      nodes,
+      getNode,
     ]
   );
 
@@ -660,5 +738,6 @@ export const useChatGraph = () => {
     saveToLocalStorage,
     loadFromLocalStorage,
     startNewConversation,
+    addInputNode,
   };
 };
