@@ -75,18 +75,49 @@ export const useChatGraph = () => {
 
   const handleSend = useCallback(
     async (text: string, parentId: string, inputNodeId: string) => {
-      // 1. Replace the Input Node with a User Message Node
+      // 1. Replace the Input Node with a User Message Node AND Create Assistant Node
       const userNodeId = inputNodeId;
+      const assistantId = `ai-${Date.now()}`;
+
+      // Calculate position for zoom (using current state)
+      const inputNodeForZoom = getNode(inputNodeId);
+      const zoomPosition = inputNodeForZoom
+        ? {
+            x: inputNodeForZoom.position.x,
+            y:
+              inputNodeForZoom.position.y +
+              150 +
+              (inputNodeForZoom.measured?.height || 50),
+          }
+        : { x: 0, y: 0 };
 
       setNodes((prevNodes) => {
-        return prevNodes.map((node) => {
+        const assistantNode: ChatNode = {
+          id: assistantId,
+          type: "message",
+          position: { x: 0, y: 0 },
+          origin: [0.5, 0.0],
+          data: {
+            role: "assistant",
+            content: "Thinking...",
+            timestamp: Date.now(),
+          },
+        };
+
+        const nextNodes = prevNodes.map((node): ChatNode => {
           if (node.id === inputNodeId) {
+            // Calculate position relative to this node
+            assistantNode.position = {
+              x: node.position.x,
+              y: node.position.y + 150 + (node.measured?.height || 50),
+            };
+
             return {
               ...node,
               type: "message",
               data: {
                 ...node.data,
-                role: "user",
+                role: "user" as const,
                 content: text,
                 isInput: false,
               },
@@ -94,34 +125,9 @@ export const useChatGraph = () => {
           }
           return node;
         });
+
+        return [...nextNodes, assistantNode];
       });
-
-      // 2. Create a placeholder Assistant Node
-      const assistantId = `ai-${Date.now()}`;
-
-      // Calculate position based on input node
-      // Use getNode to get the most current position, avoiding stale state in closures
-      const inputNode = getNode(inputNodeId);
-      const position = inputNode
-        ? {
-            x: inputNode.position.x,
-            y: inputNode.position.y + 150 + (inputNode.measured?.height || 50),
-          }
-        : { x: 0, y: 0 };
-
-      const assistantNode: ChatNode = {
-        id: assistantId,
-        type: "message",
-        position,
-        origin: [0.5, 0.0],
-        data: {
-          role: "assistant",
-          content: "Thinking...",
-          timestamp: Date.now(),
-        },
-      };
-
-      setNodes((prevNodes) => [...prevNodes, assistantNode]);
 
       setEdges((prevEdges) =>
         addEdge(
@@ -137,7 +143,7 @@ export const useChatGraph = () => {
       );
 
       // Auto-zoom to the new assistant node
-      setCenter(position.x, position.y, {
+      setCenter(zoomPosition.x, zoomPosition.y, {
         zoom: getViewport().zoom,
         duration: 800,
       });
@@ -258,7 +264,8 @@ export const useChatGraph = () => {
               setEdges((eds) => eds.filter((e) => e.target !== inputId));
 
               // Zoom back to the parent node
-              const parentNode = nodes.find((n) => n.id === parentId);
+              // Use getNode to get current state, avoiding closure staleness
+              const parentNode = getNode(parentId);
               if (parentNode) {
                 // Adjust for node width/height to center it properly
                 // Assuming standard node size, or we could use measured dimensions if available
