@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     // Add a system message to ensure proper markdown formatting and math support
     const systemMessage = {
-      role: "developer",
+      role: "system",
       content:
         "You are a helpful assistant. Always use proper markdown formatting in your responses. Use **text** for bold, *text* for italic, and use proper markdown list syntax with dashes (-) or asterisks (*) for bullet points. \n\nFor mathematics, you MUST use LaTeX formatting. \n- Use $...$ for inline math.\n- Use $$...$$ for block math.\n- Do not use \\( ... \\) or \\[ ... \\].\n- Avoid using asterisks (*) for multiplication in math blocks; use \\cdot or \\times instead to prevent formatting conflicts.\n\nFormat your responses clearly with proper spacing between paragraphs and lists.",
     };
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const messagesWithSystem = [systemMessage, ...messages];
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.1-chat-latest",
+      model: "gpt-5.1",
       messages: messagesWithSystem,
     });
 

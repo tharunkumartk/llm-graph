@@ -1,5 +1,5 @@
 import React, { memo, useState, useCallback, useEffect, useRef } from "react";
-import { Handle, Position, NodeProps, useStore } from "@xyflow/react";
+import { Handle, Position, NodeProps } from "@xyflow/react";
 import { ChatNodeData } from "@/types/chat";
 import { cn } from "@/app/lib/utils";
 import { Send, X } from "lucide-react";
@@ -19,7 +19,6 @@ const MODE_LABELS = {
 };
 
 const InputNode = ({ data, id }: NodeProps) => {
-  const isZoomedIn = useStore((s: { transform: [number, number, number] }) => s.transform[2] > 1.0);
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ResponseMode>("regular");
 
@@ -27,9 +26,14 @@ const InputNode = ({ data, id }: NodeProps) => {
 
   useEffect(() => {
     // Focus the textarea when the component mounts
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
+    // Use a small timeout to ensure the element is ready and animations have settled
+    const timer = setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 50);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const cycleMode = (direction: "next" | "prev") => {
@@ -132,8 +136,7 @@ const InputNode = ({ data, id }: NodeProps) => {
         <textarea
           ref={textareaRef}
           className={cn(
-            "w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-none bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400",
-            !isZoomedIn && "pointer-events-none"
+            "w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px] resize-none bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:placeholder-gray-400 nodrag cursor-text"
           )}
           placeholder="Type your message here..."
           value={text}
