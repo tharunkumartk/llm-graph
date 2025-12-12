@@ -194,11 +194,12 @@ const MessageNode = ({ data, isConnectable, selected }: NodeProps) => {
                 </h3>
               ),
               code: ({
-                node: _node,
                 className,
                 children,
                 ...props
-              }: React.ComponentPropsWithoutRef<"code"> & { node?: any }) => {
+              }: React.ComponentPropsWithoutRef<"code"> & {
+                node?: unknown;
+              }) => {
                 const match = /language-(\w+)/.exec(className || "");
                 const isInline = !match && !String(children).includes("\n");
                 return isInline ? (

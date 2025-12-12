@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useRef } from "react";
 import {
   ReactFlow,
@@ -14,6 +16,7 @@ import { useChatGraph } from "@/app/hooks/useChatGraph";
 import MessageNode from "./nodes/MessageNode";
 import InputNode from "./nodes/InputNode";
 import TutorialModal from "./TutorialModal";
+import NodeSearchOverlay from "./NodeSearchOverlay";
 
 const nodeTypes = {
   message: MessageNode,
@@ -41,6 +44,7 @@ function ChatGraphContent() {
 
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = React.useState(false);
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
   // Navigation state
   const focusedNodeIdRef = useRef<string | null>(null);
@@ -97,6 +101,22 @@ function ChatGraphContent() {
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Cmd/Ctrl + F: open Spotlight-like node search (override browser Find)
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        setIsSearchOpen(true);
+        return;
+      }
+
+      // While search is open, let it own keyboard input.
+      if (isSearchOpen) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setIsSearchOpen(false);
+        }
+        return;
+      }
+
       // Only handle navigation if not typing in an input field (unless it's the graph itself)
       // Since InputNode has an input field, we might want to be careful.
       // But typically "Tab" and Arrow keys in a canvas context should be handled if the canvas is focused or globally if not inside a textarea/input.
@@ -304,7 +324,7 @@ function ChatGraphContent() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [getNodes, getEdges, focusNode, addInputNode]);
+  }, [getNodes, getEdges, focusNode, addInputNode, isSearchOpen]);
 
   React.useEffect(() => {
     // Check initial preference
@@ -361,6 +381,16 @@ function ChatGraphContent() {
 
   return (
     <div className="w-full h-screen bg-gray-50 dark:bg-black relative group/canvas">
+      <NodeSearchOverlay
+        isOpen={isSearchOpen}
+        nodes={nodes}
+        onClose={() => setIsSearchOpen(false)}
+        onSelectNode={(nodeId) => {
+          setIsSearchOpen(false);
+          focusNode(nodeId);
+        }}
+      />
+
       {/* Top Control Bar */}
       <div className="absolute top-6 right-6 z-10 flex items-center gap-2 p-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-gray-200/60 dark:border-zinc-800/60 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
         <div className="flex items-center gap-1 pr-2 border-r border-gray-200 dark:border-zinc-800">
@@ -457,7 +487,7 @@ function ChatGraphContent() {
           size={1}
           color={isDarkMode ? "#27272a" : "#E5E7EB"}
         />
-        <Controls className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-gray-200 dark:border-zinc-800 shadow-sm rounded-xl overflow-hidden !left-6 !bottom-6 !m-0 [&>button]:border-b-gray-200 dark:[&>button]:border-b-zinc-800 [&>button]:text-gray-600 dark:[&>button]:text-gray-400 [&>button:hover]:bg-gray-50 dark:[&>button:hover]:bg-zinc-800" />
+        <Controls className="!left-6 !bottom-6 !m-0 p-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-gray-200/60 dark:border-zinc-800/60 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden !flex !flex-col gap-1 [&>button]:!bg-transparent [&>button]:!border-0 [&>button]:p-2 [&>button]:text-gray-500 dark:[&>button]:text-gray-400 [&>button:hover]:text-gray-900 dark:[&>button:hover]:text-gray-100 [&>button:hover]:!bg-gray-100/50 dark:[&>button:hover]:!bg-zinc-800/50 [&>button]:rounded-xl [&>button]:transition-all [&>button]:duration-200" />
         <MiniMap
           zoomable
           pannable

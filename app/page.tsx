@@ -1,5 +1,3 @@
-"use client";
-
 import ChatGraph from "./components/ChatGraph";
 
 export default function Home() {

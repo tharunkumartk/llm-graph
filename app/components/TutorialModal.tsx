@@ -1,5 +1,14 @@
-import React from 'react';
-import { X, Keyboard, GitGraph, Command, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, CornerDownLeft } from 'lucide-react';
+import React from "react";
+import {
+  X,
+  Keyboard,
+  GitGraph,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  CornerDownLeft,
+} from "lucide-react";
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -9,13 +18,13 @@ interface TutorialModalProps {
 export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isOpen && e.key === 'Escape') {
+      if (isOpen && e.key === "Escape") {
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -35,7 +44,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             <X size={20} />
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[80vh]">
           <div className="space-y-8">
             {/* Description Section */}
@@ -44,9 +53,10 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 What is this?
               </h3>
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                LLM Graph is a visual chat interface that allows you to branch conversations like a tree. 
-                Instead of a linear chat history, you can create multiple paths from any message to explore different ideas, 
-                comparisons, or refinements without losing context.
+                LLM Graph is a visual chat interface that allows you to branch
+                conversations like a tree. Instead of a linear chat history, you
+                can create multiple paths from any message to explore different
+                ideas, comparisons, or refinements without losing context.
               </p>
               <ul className="mt-4 space-y-2 text-gray-600 dark:text-gray-300">
                 <li className="flex items-start gap-2">
@@ -70,7 +80,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                 <Keyboard className="w-5 h-5 text-gray-500" />
                 Keyboard Shortcuts
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Navigation Group */}
                 <div className="space-y-3">
@@ -78,21 +88,28 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                     Navigation
                   </h4>
                   <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-3 space-y-3">
-                    <ShortcutItem 
-                      keys={['Tab']} 
-                      label="Cycle through nodes linearly" 
+                    <ShortcutItem
+                      keys={["Tab"]}
+                      label="Cycle through nodes linearly"
                     />
-                    <ShortcutItem 
-                      keys={[<ArrowUp size={14} key="up" />]} 
-                      label="Navigate to parent" 
+                    <ShortcutItem
+                      keys={["⌘", "F"]}
+                      label="Search nodes (Spotlight)"
                     />
-                    <ShortcutItem 
-                      keys={[<ArrowDown size={14} key="down" />]} 
-                      label="Navigate to child" 
+                    <ShortcutItem
+                      keys={[<ArrowUp size={14} key="up" />]}
+                      label="Navigate to parent"
                     />
-                    <ShortcutItem 
-                      keys={[<ArrowLeft size={14} key="left" />, <ArrowRight size={14} key="right" />]} 
-                      label="Navigate between siblings" 
+                    <ShortcutItem
+                      keys={[<ArrowDown size={14} key="down" />]}
+                      label="Navigate to child"
+                    />
+                    <ShortcutItem
+                      keys={[
+                        <ArrowLeft size={14} key="left" />,
+                        <ArrowRight size={14} key="right" />,
+                      ]}
+                      label="Navigate between siblings"
                     />
                   </div>
                 </div>
@@ -103,29 +120,29 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
                     Input & Actions
                   </h4>
                   <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-lg p-3 space-y-3">
-                    <ShortcutItem 
-                      keys={[<CornerDownLeft size={14} key="enter" />]} 
-                      label="Send message" 
+                    <ShortcutItem
+                      keys={[<CornerDownLeft size={14} key="enter" />]}
+                      label="Send message"
                     />
-                    <ShortcutItem 
-                      keys={['Shift', <CornerDownLeft size={14} key="s-enter" />]} 
-                      label="New line" 
+                    <ShortcutItem
+                      keys={[
+                        "Shift",
+                        <CornerDownLeft size={14} key="s-enter" />,
+                      ]}
+                      label="New line"
                     />
-                    <ShortcutItem 
-                      keys={['⌘', '[']} 
-                      label="Previous response mode" 
+                    <ShortcutItem
+                      keys={["⌘", "["]}
+                      label="Previous response mode"
                     />
-                    <ShortcutItem 
-                      keys={['⌘', ']']} 
-                      label="Next response mode" 
+                    <ShortcutItem
+                      keys={["⌘", "]"]}
+                      label="Next response mode"
                     />
-                    <ShortcutItem 
-                      keys={['Esc']} 
-                      label="Cancel empty input" 
-                    />
-                    <ShortcutItem 
-                      keys={['⌫', 'Del']} 
-                      label="Delete selected node" 
+                    <ShortcutItem keys={["Esc"]} label="Cancel empty input" />
+                    <ShortcutItem
+                      keys={["⌫", "Del"]}
+                      label="Delete selected node"
                     />
                   </div>
                 </div>
@@ -147,7 +164,13 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
   );
 }
 
-function ShortcutItem({ keys, label }: { keys: (string | React.ReactNode)[], label: string }) {
+function ShortcutItem({
+  keys,
+  label,
+}: {
+  keys: (string | React.ReactNode)[];
+  label: string;
+}) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
@@ -157,11 +180,12 @@ function ShortcutItem({ keys, label }: { keys: (string | React.ReactNode)[], lab
             <kbd className="px-2 py-1 bg-white dark:bg-zinc-700 border border-gray-200 dark:border-zinc-600 rounded-md text-xs font-semibold text-gray-500 dark:text-gray-300 shadow-sm min-w-[24px] text-center flex items-center justify-center h-6">
               {k}
             </kbd>
-            {i < keys.length - 1 && <span className="text-gray-400 text-xs">+</span>}
+            {i < keys.length - 1 && (
+              <span className="text-gray-400 text-xs">+</span>
+            )}
           </React.Fragment>
         ))}
       </div>
     </div>
   );
 }
-

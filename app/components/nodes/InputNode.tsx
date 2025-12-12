@@ -1,8 +1,8 @@
-import React, { memo, useState, useCallback, useEffect, useRef } from "react";
+import React, { memo, useState, useEffect, useRef } from "react";
 import { Handle, Position, NodeProps } from "@xyflow/react";
 import { ChatNodeData } from "@/types/chat";
 import { cn } from "@/app/lib/utils";
-import { Send, X } from "lucide-react";
+import { Send } from "lucide-react";
 
 type ResponseMode = "concise" | "regular" | "explanatory";
 
@@ -18,7 +18,7 @@ const MODE_LABELS = {
   explanatory: "Explanatory",
 };
 
-const InputNode = ({ data, id }: NodeProps) => {
+const InputNode = ({ data }: NodeProps) => {
   const [text, setText] = useState("");
   const [mode, setMode] = useState<ResponseMode>("regular");
 
@@ -32,7 +32,7 @@ const InputNode = ({ data, id }: NodeProps) => {
         textareaRef.current.focus();
       }
     }, 50);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -95,23 +95,23 @@ const InputNode = ({ data, id }: NodeProps) => {
         isConnectable={false}
         className="w-16 h-16 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
       />
-      
+
       <Handle
         type="target"
         position={Position.Left}
         id="left"
         isConnectable={false}
         className="w-12 h-12 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
-        style={{ top: '50%' }}
+        style={{ top: "50%" }}
       />
-      
+
       <Handle
         type="target"
         position={Position.Right}
         id="right"
         isConnectable={false}
         className="w-12 h-12 bg-blue-500 border-2 border-white dark:border-zinc-800 shadow-md opacity-50 hover:scale-[1.125] transition-all duration-200"
-        style={{ top: '50%' }}
+        style={{ top: "50%" }}
       />
 
       <div className="p-3">
@@ -123,9 +123,12 @@ const InputNode = ({ data, id }: NodeProps) => {
             <span
               className={cn(
                 "px-2 py-0.5 text-[10px] font-medium rounded-full uppercase tracking-wide transition-colors",
-                mode === "concise" && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                mode === "regular" && "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                mode === "explanatory" && "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                mode === "concise" &&
+                  "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                mode === "regular" &&
+                  "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                mode === "explanatory" &&
+                  "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
               )}
               title="Use Cmd+[ or Cmd+] to change mode"
             >
